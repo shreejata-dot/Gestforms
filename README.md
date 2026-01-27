@@ -14,5 +14,5 @@ At this step, the main goal is to determine where participants were looking over
 
 We used the eyetrackingR package to run a cluster-based permutation analyses to examine significant durations during which infants looked more at gestures.
 
-[Download R-script] (eyetracking_timecourse.Rmd)
+[Download R-script](eyetracking_timecourse.Rmd)
 
