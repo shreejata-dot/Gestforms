@@ -1,0 +1,273 @@
+---
+title: "Gestforms"
+output: html_document
+date: "2026-01-27"
+---
+---
+title: "Gestforms"
+output: html_document
+date: "2026-01-09"
+---
+
+```{r load}  
+  # Data Preparation
+library(lme4)
+library(plyr)
+library(dplyr)
+library(stringr)
+library(reshape) 
+library(glmmTMB)
+library(ggplot2)
+library(lmerTest)
+library(forcats)
+library(tidyr)
+library(pbapply)
+
+data <- read.table('./Results.txt', header = TRUE, sep = "")
+
+#add unique item column for action-gesture video pairs
+data <- data %>%
+  mutate(item = NA_character_)  
+
+# Loop over 1 to 6 to set item column based on conditions
+for (i in 1:6) {
+  action_keyword <- paste0("Action", i)
+  gesture_keyword <- paste0("Gesture", i)
+  item_value <- paste0("item", i)
+  
+  # Update 'item' column for matched conditions
+  matched_rows <- (str_detect(data$movie_L, action_keyword) & str_detect(data$movie_R, gesture_keyword)) |
+    (str_detect(data$movie_L, gesture_keyword) & str_detect(data$movie_R, action_keyword))
+  
+  data$item[matched_rows] <- item_value
+}
+
+data$item <- as.factor(data$item)
+
+
+data$gesture_type <- "iconic"
+data$gesture_type[which(data$item %in% c("item1","item2","item3"))]  <- "pointing"
+data$gesture_type<-as.factor(data$gesture_type)
+
+
+data <- subset(data, time >= 0 & time <= 12000)
+```
+
+
+#Trial Selection (test + baseline)
+```{r trial-selection}
+infos.trials <- ddply(data,.(participant, item, i, side_trial), summarize, prop_away = sum(Away)/length(Away))
+infos.trials$i<-as.numeric(infos.trials$i)
+good.trials <- subset(infos.trials, prop_away <= 0.5)
+good.trials$i<-as.numeric(good.trials$i)
+data.valid <- merge(data, good.trials)
+```
+
+#Participant Selection based on trial number
+```{r participant}
+valid_participants <- data.valid %>%
+  group_by(participant) %>%
+  dplyr::summarise(n=length(unique(i)))  %>%
+  filter(n >= 5) %>%
+  ungroup()
+
+data.clean <- subset(data.valid, participant %in% valid_participants$participant)
+
+data.clean <- data.clean %>%
+  filter(Away != 1) %>%
+  mutate(
+    Target = as.integer(Target_ROI == 1 | Target_RONI == 1),
+    Distractor = as.integer(Distractor_ROI == 1 | Distractor_RONI == 1)
+  )
+
+```
+
+#identify three different loops
+```{r}
+time_bin_size <- 50
+
+data.clean[["TimeBin"]] <- floor(data.clean[["time"]] / time_bin_size)
+
+
+data.clean$Time <- data.clean$TimeBin * time_bin_size
+
+data.clean <- data.clean %>%
+  mutate(loop = case_when(
+    Time >= 0 & Time < 4000 ~ 1,
+    Time >= 4000 & Time < 8000 ~ 2,
+    Time >= 8000 & Time <= 12000 ~ 3
+  ))
+
+data.clean$loop<-as.integer(data.clean$loop)
+
+#make timebin for each loop look like loop1
+data.clean <- data.clean %>%
+  mutate(
+    Time_within_loop = Time - (loop - 1) * 4000
+  )
+
+
+#convert clean data into long format to have ROIs 
+data.clean.long <- data.clean %>%
+  pivot_longer(
+    cols = c(Target_ROI, Target_RONI, Distractor_ROI, Distractor_RONI, Target, Distractor, Away),
+    names_to = "ROI_type",
+    values_to = "look"
+  )
+
+#working with Target and Distractor alone, so, full screen
+
+data.clean.full<- data.clean.long%>%
+  filter(ROI_type %in% c("Target", "Distractor"))
+
+
+data.clean.full <- data.clean.full %>%
+  dplyr::mutate(
+    Trackloss = FALSE,
+    unique_id = paste(participant, i, ROI_type, time, sep = "_")
+    )
+
+data.clean.wide <- data.clean.full %>%
+  pivot_wider(
+    names_from = loop,
+    values_from = look,
+    names_prefix = "loop"
+  )
+
+#collapse values across loops 1,2,3 into a column loop_all
+data.clean.wide <- data.clean.wide %>%
+  mutate(loop_all = case_when(
+      ROI_type == "Target" ~ as.integer(loop1 == 1 | loop2 == 1 | loop3 == 1, 0L),
+      ROI_type == "Distractor" ~ as.integer(loop1 == 1 | loop2 == 1 | loop3 == 1, 0L)
+    )
+)
+
+#add unique_id
+data.clean.wide <- data.clean.wide %>%
+  dplyr::mutate(
+    Trackloss = FALSE,
+    unique_id = paste(participant, i, ROI_type, time, sep = "_")
+    )
+
+```
+
+#Time-course for full-screen with average looking proportions across video loops
+```{r time course for full screen}
+library(eyetrackingR)
+library(dplyr)
+library(tidyr)
+library(dplyr)
+
+
+#pivot back to have target and distractor columns
+
+et_data <- data.clean.wide %>%
+  select(
+    participant,i, unique_id, Time_within_loop,
+    Trackloss, ROI_type, loop_all, gesture_type
+  ) %>%
+  mutate(
+    Target_all = if_else(ROI_type == "Target", loop_all, 0L),
+    Distractor_all = if_else(ROI_type == "Distractor", loop_all,0L)
+  )
+  
+# make eyetrackingR object
+et_data <- make_eyetrackingr_data(
+  et_data,
+  participant_column = "participant",
+  trial_column = "unique_id",
+  time_column = "Time_within_loop",
+  trackloss_column = "Trackloss",
+  aoi_columns = c("Target_all", "Distractor_all"),
+  treat_non_aoi_looks_as_missing = TRUE
+)
+
+time_bin_size = 50
+# subset time window
+ 
+response_time <- make_time_sequence_data(
+  et_data,
+  time_bin_size = time_bin_size,
+  aois = c("Target_all", "Distractor_all"),
+  predictor_columns = c("gesture_type"), # for pointing and iconic
+  summarize_by = ("participant")
+)
+
+response_time$AOI<-as.factor(response_time$AOI)
+
+
+
+ggplot(response_time, aes(x = Time, y = Prop, color = AOI))+
+ stat_smooth(method="loess", span=0.1, se=TRUE,aes(fill = AOI), alpha=0.3) +
+theme_classic() +
+labs(y = "Proportion of looks to gesture")+
+geom_hline(yintercept = .5, color = "black", linetype = "dashed")+
+geom_vline(xintercept = 0, color = "black", linetype = "dashed")+
+#facet_wrap(vars(gesture_type, AOI))+ #replace by "gesture_type" for pointing and iconic
+theme(legend.position = "bottom",
+     legend.title = element_blank())
+
+```
+
+#clusters for full screen
+```{r clusters}
+
+#cluster identification with eyetracking.r
+
+
+response_time_subj <- response_time %>%
+  group_by(participant, Time, AOI) %>%
+  summarise(
+    Prop = mean(Prop, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+et_clusters <- make_time_cluster_data(
+  data = response_time,
+  predictor_column = "AOI",
+  test = "t.test",
+  threshold = 2
+)
+
+plot(et_clusters)+  ylab("T-Statistic") + theme_classic()
+summary(et_clusters)
+
+#permutation of clusters
+
+cluster_perm <- analyze_time_clusters(
+  data = et_clusters,
+  within_subj = TRUE,
+  paired = TRUE,
+  samples = 1000
+)
+
+
+plot(cluster_perm) + theme_light()
+
+
+summary(cluster_perm)
+
+clusters_df <- cluster_perm$clusters
+ sig_clusters <- clusters_df %>%
+  dplyr::filter(Probability < 0.05)
+
+ 
+ 
+ 
+ ggplot(response_time, aes(x = Time, y = Prop, color = AOI, fill = AOI)) +
+  geom_rect(data = sig_clusters, aes(xmin = StartTime, xmax = EndTime, ymin = -Inf, ymax = Inf), inherit.aes = FALSE, fill = "darkturquoise", alpha = 0.1) +
+  stat_smooth (method = "loess", span = 0.1, se = TRUE) +
+  geom_hline(yintercept = 0.5, color = "black", linetype = "dashed") +
+  geom_vline(xintercept = 0, color = "black", linetype = "dashed") +
+  theme_classic() +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank()
+  ) +
+  labs(
+    y = "Proportion of Looks",
+    x = "Time (ms)"
+  )
+
+
+```
