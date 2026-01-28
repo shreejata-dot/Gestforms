@@ -1,8 +1,4 @@
----
-title: "Gestforms"
-output: html_document
-date: "2026-01-27"
----
+
 ---
 title: "Gestforms"
 output: html_document
@@ -11,17 +7,12 @@ date: "2026-01-09"
 
 ```{r load}  
   # Data Preparation
-library(lme4)
 library(plyr)
-library(dplyr)
-library(stringr)
-library(reshape) 
-library(glmmTMB)
+library(dplyr) 
 library(ggplot2)
 library(lmerTest)
-library(forcats)
 library(tidyr)
-library(pbapply)
+
 
 data <- read.table('./Results.txt', header = TRUE, sep = "")
 
@@ -269,5 +260,291 @@ clusters_df <- cluster_perm$clusters
     x = "Time (ms)"
   )
 
+#Time-course for ROIs with average looking proportions across video loops
+```{r time course for ROIs}
+library(eyetrackingR)
+library(dplyr)
+library(tidyr)
+library(dplyr)
+
+
+#pivot back to have target and distractor columns
+
+et_data.ROI <- data.clean.wide.ROI %>%
+  select(
+    participant,i, unique_id, Time_within_loop,
+    Trackloss, ROI_type, loop_all, gesture_type
+  ) %>%
+  mutate(
+    Target_ROI = if_else(ROI_type == "Target_ROI", loop_all, 0L),
+    Target_RONI = if_else(ROI_type == "Target_RONI", loop_all, 0L),
+    Distractor_ROI = if_else(ROI_type == "Distractor_ROI", loop_all,0L),
+    Distractor_RONI = if_else(ROI_type == "Distractor_RONI", loop_all,0L)
+  )
+  
+# make eyetrackingR object
+et_data.ROI <- make_eyetrackingr_data(
+  et_data.ROI,
+  participant_column = "participant",
+  trial_column = "unique_id",
+  time_column = "Time_within_loop",
+  trackloss_column = "Trackloss",
+  aoi_columns = c("Target_ROI", "Distractor_ROI","Target_RONI", "Distractor_RONI"),
+  treat_non_aoi_looks_as_missing = TRUE
+)
+
+time_bin_size = 50
+# subset time window
+response_time.ROI <- make_time_sequence_data(
+  et_data.ROI,
+  time_bin_size = time_bin_size,
+  aois = c("Target_ROI", "Distractor_ROI"),#"Target_RONI", "Distractor_RONI"),
+  predictor_columns = c("gesture_type"), #for pointing and iconic
+  summarize_by = ("participant")
+)
+
+response_time.ROI$AOI<-as.factor(response_time.ROI$AOI)
+
+
+ggplot(response_time.ROI, aes(x = Time, y = Prop, color = AOI))+
+ stat_smooth(method="loess", span=0.1, se=TRUE,aes(fill = AOI), alpha=0.3) +
+theme_classic() +
+labs(y = "Proportion of looks to gesture")+
+#geom_hline(yintercept = .5, color = "black", linetype = "dashed")+
+geom_vline(xintercept = 0, color = "black", linetype = "dashed")+
+#facet_wrap(~AOI)+ #replace by "gesture_type" for pointing and iconic
+theme(legend.position = "bottom",
+     legend.title = element_blank())
+
+```
+#Time-course for ROIs with average looking proportions across video loops
+```{r time course for ROIs}
+
+#pivot back to have target and distractor columns
+
+et_data.ROI <- data.clean.wide.ROI %>%
+  select(
+    participant,i, unique_id, Time_within_loop,
+    Trackloss, ROI_type, loop_all, gesture_type
+  ) %>%
+  mutate(
+    Target_ROI = if_else(ROI_type == "Target_ROI", loop_all, 0L),
+    Target_RONI = if_else(ROI_type == "Target_RONI", loop_all, 0L),
+    Distractor_ROI = if_else(ROI_type == "Distractor_ROI", loop_all,0L),
+    Distractor_RONI = if_else(ROI_type == "Distractor_RONI", loop_all,0L)
+  )
+  
+# make eyetrackingR object
+et_data.ROI <- make_eyetrackingr_data(
+  et_data.ROI,
+  participant_column = "participant",
+  trial_column = "unique_id",
+  time_column = "Time_within_loop",
+  trackloss_column = "Trackloss",
+  aoi_columns = c("Target_ROI", "Distractor_ROI","Target_RONI", "Distractor_RONI"),
+  treat_non_aoi_looks_as_missing = TRUE
+)
+
+time_bin_size = 50
+# subset time window
+response_time.ROI <- make_time_sequence_data(
+  et_data.ROI,
+  time_bin_size = time_bin_size,
+  aois = c("Target_ROI", "Distractor_ROI"),#"Target_RONI", "Distractor_RONI"),
+  predictor_columns = c("gesture_type"), #for pointing and iconic
+  summarize_by = ("participant")
+)
+
+response_time.ROI$AOI<-as.factor(response_time.ROI$AOI)
+
+
+ggplot(response_time.ROI, aes(x = Time, y = Prop, color = AOI))+
+ stat_smooth(method="loess", span=0.1, se=TRUE,aes(fill = AOI), alpha=0.3) +
+theme_classic() +
+labs(y = "Proportion of looks to gesture")+
+#geom_hline(yintercept = .5, color = "black", linetype = "dashed")+
+geom_vline(xintercept = 0, color = "black", linetype = "dashed")+
+#facet_wrap(~AOI)+ #replace by "gesture_type" for pointing and iconic
+theme(legend.position = "bottom",
+     legend.title = element_blank())
+
+```
+
+#clusters for ROIs
+```{r clusters for ROIs}
+
+#cluster identification with eyetracking.r
+
+et_clusters.ROI <- make_time_cluster_data(
+  data = response_time.ROI,
+  predictor_column = "AOI",
+  test = "t.test",
+  threshold = 2
+)
+
+plot(et_clusters.ROI)+  ylab("T-Statistic") + theme_classic()
+summary(et_clusters.ROI)
+
+#permutation of clusters
+
+cluster_perm.ROI <- analyze_time_clusters(
+  data = et_clusters.ROI,
+  within_subj = TRUE,
+  paired = TRUE,
+  samples = 1000
+)
+
+
+plot(cluster_perm.ROI) + theme_light()
+
+
+summary(cluster_perm)
+
+clusters_df.ROI <- cluster_perm.ROI$clusters
+ sig_clusters.ROI <- clusters_df.ROI %>%
+  dplyr::filter(Probability < 0.05)
+
+ 
+ 
+ 
+ ggplot(response_time.ROI, aes(x = Time, y = Prop, fill = AOI, color = AOI)) +
+  geom_rect(data = sig_clusters.ROI, aes(xmin = StartTime, xmax = EndTime, ymin = -Inf, ymax = Inf), inherit.aes = FALSE, fill = "darkturquoise", alpha = 0.1) +
+  stat_smooth (method = "loess", span = 0.1, se = TRUE, aes(fill = AOI), alpha = 0.2) +
+  #geom_hline(yintercept = 0.5, color = "black", linetype = "dashed") +
+  geom_vline(xintercept = 0, color = "black", linetype = "dashed") +
+  #facet_wrap(~gesture_type) + # or replace AOI with gesture_type if desired
+  theme_classic() +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank()
+  ) +
+  labs(
+    y = "Proportion of Looks",
+    x = "Time (ms)"
+  )
+
+```
+#Time-course for gesture types in ROIs with average looking proportions across video loops
+```{r time course for ROIs gesture types}
+library(eyetrackingR)
+library(dplyr)
+library(tidyr)
+library(dplyr)
+
+
+#pivot back to have target and distractor columns
+
+et_data.type <- data.clean.wide.ROI %>%
+  select(
+    participant,i, unique_id, Time_within_loop,
+    Trackloss, ROI_type, loop_all, gesture_type
+  ) %>%
+  mutate(
+    Target_R = if_else(ROI_type == "Target_ROI", loop_all, 0L),
+    Target_RN = if_else(ROI_type == "Target_RONI", loop_all, 0L),
+    Distractor_R = if_else(ROI_type == "Distractor_ROI", loop_all,0L),
+    Distractor_RN = if_else(ROI_type == "Distractor_RONI", loop_all,0L)
+  )
+  
+# make eyetrackingR object
+et_data.type <- make_eyetrackingr_data(
+  et_data.type,
+  participant_column = "participant",
+  trial_column = "unique_id",
+  time_column = "Time_within_loop",
+  trackloss_column = "Trackloss",
+  aoi_columns = c("Target_R", "Distractor_R", "Target_RN", "Distractor_RN"),
+  treat_non_aoi_looks_as_missing = TRUE
+)
+
+time_bin_size = 50
+# subset time window
+response_time.type <- make_time_sequence_data(
+  et_data.type,
+  time_bin_size = time_bin_size,
+  aois = c("Target_R", "Distractor_R"),
+  predictor_columns = c("gesture_type"),
+  summarize_by = ("participant")#for pointing and iconic
+)
+
+response_time.type$AOI<-as.factor(response_time.type$AOI)
+
+
+ggplot(response_time.type, aes(x = Time, y = Prop, color = AOI))+
+ stat_smooth(method="loess", span=0.1, se=TRUE,aes(fill = AOI), alpha=0.3) +
+theme_classic() +
+labs(y = "Proportion of looks to gesture")+
+#geom_hline(yintercept = .5, color = "black", linetype = "dashed")+
+geom_vline(xintercept = 0, color = "black", linetype = "dashed")+
+facet_wrap(~gesture_type)+ # for pointing and iconic
+theme(legend.position = "bottom",
+     legend.title = element_blank())
+
+```
+#clusters for gesture types in ROIs
+```{r clusters for ROIs with gesture types}
+
+#cluster identification with eyetracking.r
+
+
+#clusters for gesture types separately for pointing and iconic
+
+#clean_timebin <- function(data) {
+ # data %>%
+  #  group_by(TimeBin, participant) %>%
+   # filter(n_distinct(AOI) == 2) %>%  # only participants with both AOIs
+    #ungroup()
+#}
+iconic_data   <- subset(response_time.type, gesture_type == "iconic")
+pointing_data <- subset(response_time.type, gesture_type == "pointing")
+
+
+et_clusters.type.iconic <- make_time_cluster_data(
+  data = iconic_data, #replace by iconic_data for iconic and name them separately
+  predictor_column = "AOI",
+  test = "t.test", 
+  threshold = 1.5
+)
+
+
+plot(et_clusters.type.iconic)+  ylab("T-Statistic") + theme_classic()
+summary(et_clusters.type)
+
+#permutation of clusters
+
+cluster_perm.type.iconic <- analyze_time_clusters(
+  data = et_clusters.type.iconic,
+  within_subj = TRUE,
+  paired = TRUE,
+  samples = 1000
+)
+
+
+plot(cluster_perm.type.iconic) + theme_light()
+
+
+summary(cluster_perm.type.iconic)
+
+clusters_df.type.iconic <- cluster_perm.type.iconic$clusters
+ sig_clusters.type.iconic <- clusters_df.type.iconic %>%
+  dplyr::filter(Probability < 0.05)
+
+ 
+ 
+ ggplot(iconic_data, aes(x = Time, y = Prop, fill = AOI, color = AOI)) +
+  geom_rect(data = sig_clusters.type.iconic, aes(xmin = StartTime, xmax = EndTime, ymin = -Inf, ymax = Inf), inherit.aes = FALSE, fill = "darkturquoise", alpha = 0.1) +
+  stat_smooth (method = "loess", span = 0.1, se = TRUE, aes(fill = AOI), alpha = 0.2) +
+  #geom_hline(yintercept = 0.5, color = "black", linetype = "dashed") +
+  geom_vline(xintercept = 0, color = "black", linetype = "dashed") +
+  #facet_wrap(~AOI) + # or replace AOI with gesture_type if desired
+  theme_classic() +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank()
+  ) +
+  labs(
+    y = "Proportion of Looks",
+    x = "Time (ms)"
+  )
 
 ```
