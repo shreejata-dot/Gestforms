@@ -12,10 +12,19 @@ At this step, the main goal is to determine where participants were looking over
 
 [Download the dataset](Results.txt.zip)
 
-We used the eyetrackingR package to run a cluster-based permutation analyses to examine significant durations during which infants looked more at gestures.
+We used the eyetrackingR package to run a cluster-based permutation analyses to examine significant durations during which infants looked more at gestures. First, we analysed the whole scene, then specific regions of interest (ROI) of each video, selecting areas where the gestures and actions were executed.
 
 [Download R-script](eyetracking_timecourse.Rmd)
 
 
 ## Findings
-What we find so far is that 18-mo infants do discrilinate gesture forms from other actions, like they discriminate speech sounds from other sounds. They also look differently at pointing gestures versus iconic gestures that represent actions and object attributes. We are currently analysing the underlying mechanisms for these differences in detecting different gesture types. The manuscript is in preparation.
+
+<img width="658" height="377" alt="image" src="https://github.com/user-attachments/assets/a7ef753f-8bac-4e26-bd46-967e2048d23a" />
+
+What we find so far is that 18-mo infants do discrilinate gesture forms from other actions, like they discriminate speech sounds from other sounds. 
+
+
+<img width="936" height="269" alt="image" src="https://github.com/user-attachments/assets/ec129cf1-07c7-4794-a605-7dc1109f4ce9" />
+
+They also look differently at pointing gestures versus iconic gestures that represent actions and object attributes. We are currently analysing the underlying mechanisms for these differences in detecting different gesture types. The manuscript is in preparation.
+
