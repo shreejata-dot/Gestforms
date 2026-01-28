@@ -17,12 +17,16 @@ We used the eyetrackingR package to run a cluster-based permutation analyses to 
 [Download R-script](eyetracking_timecourse.Rmd)
 
 
+## Hypothesis
+
+H1: Infants pay more visual attention to gestures than to other manual actions, like they prefer speech-sounds over non-speech-sounds
+
 ## Findings
 
 <img width="924" height="377" alt="image" src="https://github.com/user-attachments/assets/c5b04d3b-2bc6-4639-acc5-2bdfbcf108d5" />
 
 
-What we find so far is that 18-mo infants do discrilinate gesture forms from other actions, like they discriminate speech sounds from other sounds. 
+Aligning with our hypothesis, we find so far is that 18-mo infants do discrilinate gesture forms from other actions, like they discriminate speech sounds from other sounds. 
 
 
 <img width="936" height="351" alt="image" src="https://github.com/user-attachments/assets/bedc6b2f-152c-4c05-a04c-490d26c6a208" />
