@@ -16,3 +16,6 @@ We used the eyetrackingR package to run a cluster-based permutation analyses to 
 
 [Download R-script](eyetracking_timecourse.Rmd)
 
+
+## Findings
+What we find so far is that 18-mo infants do discrilinate gesture forms from other actions, like they discriminate speech sounds from other sounds. They also look differently at pointing gestures versus iconic gestures that represent actions and object attributes. We are currently analysing the underlying mechanisms for these differences in detecting different gesture types. The manuscript is in preparation.
