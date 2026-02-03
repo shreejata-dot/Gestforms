@@ -1,5 +1,6 @@
 # Gestforms
 In this ongoing project, we want to test if 18-months old infants (n = 30) display selective attention to gesture forms as compared to motor actions.
+
 Collaborators: Lucie Greco, Eulalie Péquay, Caroline Coindre, Clément François, Isabelle Dautriche
 
 This project provides a template to analyse eyetracking data from infants looking at dynamic stimuli.
