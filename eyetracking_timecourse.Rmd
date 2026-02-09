@@ -244,7 +244,6 @@ clusters_df <- cluster_perm$clusters
 
  
  
- 
  ggplot(response_time, aes(x = Time, y = Prop, color = AOI, fill = AOI)) +
   geom_rect(data = sig_clusters, aes(xmin = StartTime, xmax = EndTime, ymin = -Inf, ymax = Inf), inherit.aes = FALSE, fill = "darkturquoise", alpha = 0.1) +
   stat_smooth (method = "loess", span = 0.1, se = TRUE) +
@@ -259,6 +258,45 @@ clusters_df <- cluster_perm$clusters
     y = "Proportion of Looks",
     x = "Time (ms)"
   )
+
+#data for ROIs
+
+#working with Target_ROI and Distractor_ROI
+
+data.clean.ROI<- data.clean.long%>%
+  filter(ROI_type %in% c("Target_ROI", "Distractor_ROI", "Target_RONI", "Distractor_RONI"))
+
+
+data.clean.ROI <- data.clean.ROI %>%
+  dplyr::mutate(
+    Trackloss = FALSE,
+    unique_id = paste(participant, i, ROI_type, time, sep = "_")
+    )
+
+data.clean.wide.ROI <- data.clean.ROI %>%
+  pivot_wider(
+    names_from = loop,
+    values_from = look,
+    names_prefix = "loop"
+  )
+
+#collapse values across loops 1,2,3 into a column loop_all
+data.clean.wide.ROI <- data.clean.wide.ROI %>%
+  mutate(loop_all = case_when(
+      ROI_type == "Target_ROI" ~ as.integer(loop1 == 1 | loop2 == 1 | loop3 == 1, 0L),
+      ROI_type == "Target_RONI" ~ as.integer(loop1 == 1 | loop2 == 1 | loop3 == 1, 0L),
+      ROI_type == "Distractor_ROI" ~ as.integer(loop1 == 1 | loop2 == 1 | loop3 == 1, 0L),
+      ROI_type == "Distractor_RONI" ~ as.integer(loop1 == 1 | loop2 == 1 | loop3 == 1, 0L)
+    )
+)
+
+#add unique_id
+data.clean.wide.ROI <- data.clean.wide.ROI %>%
+  dplyr::mutate(
+    Trackloss = FALSE,
+    unique_id = paste(participant, i, ROI_type, time, sep = "_")
+    )
+
 
 #Time-course for ROIs with average looking proportions across video loops
 ```{r time course for ROIs}
@@ -316,64 +354,8 @@ geom_vline(xintercept = 0, color = "black", linetype = "dashed")+
 theme(legend.position = "bottom",
      legend.title = element_blank())
 
-```
-#Time-course for ROIs with average looking proportions across video loops
-```{r time course for ROIs}
-
-#pivot back to have target and distractor columns
-
-et_data.ROI <- data.clean.wide.ROI %>%
-  select(
-    participant,i, unique_id, Time_within_loop,
-    Trackloss, ROI_type, loop_all, gesture_type
-  ) %>%
-  mutate(
-    Target_ROI = if_else(ROI_type == "Target_ROI", loop_all, 0L),
-    Target_RONI = if_else(ROI_type == "Target_RONI", loop_all, 0L),
-    Distractor_ROI = if_else(ROI_type == "Distractor_ROI", loop_all,0L),
-    Distractor_RONI = if_else(ROI_type == "Distractor_RONI", loop_all,0L)
-  )
-  
-# make eyetrackingR object
-et_data.ROI <- make_eyetrackingr_data(
-  et_data.ROI,
-  participant_column = "participant",
-  trial_column = "unique_id",
-  time_column = "Time_within_loop",
-  trackloss_column = "Trackloss",
-  aoi_columns = c("Target_ROI", "Distractor_ROI","Target_RONI", "Distractor_RONI"),
-  treat_non_aoi_looks_as_missing = TRUE
-)
-
-time_bin_size = 50
-# subset time window
-response_time.ROI <- make_time_sequence_data(
-  et_data.ROI,
-  time_bin_size = time_bin_size,
-  aois = c("Target_ROI", "Distractor_ROI"),#"Target_RONI", "Distractor_RONI"),
-  predictor_columns = c("gesture_type"), #for pointing and iconic
-  summarize_by = ("participant")
-)
-
-response_time.ROI$AOI<-as.factor(response_time.ROI$AOI)
-
-
-ggplot(response_time.ROI, aes(x = Time, y = Prop, color = AOI))+
- stat_smooth(method="loess", span=0.1, se=TRUE,aes(fill = AOI), alpha=0.3) +
-theme_classic() +
-labs(y = "Proportion of looks to gesture")+
-#geom_hline(yintercept = .5, color = "black", linetype = "dashed")+
-geom_vline(xintercept = 0, color = "black", linetype = "dashed")+
-#facet_wrap(~AOI)+ #replace by "gesture_type" for pointing and iconic
-theme(legend.position = "bottom",
-     legend.title = element_blank())
-
-```
 
 #clusters for ROIs
-```{r clusters for ROIs}
-
-#cluster identification with eyetracking.r
 
 et_clusters.ROI <- make_time_cluster_data(
   data = response_time.ROI,
