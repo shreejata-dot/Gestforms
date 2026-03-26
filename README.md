@@ -39,6 +39,7 @@ The low-level motion features of the videos and the infants' looking patterns we
 
 [Download R-script](quantify_motion.R)
 
+
 Watch a 15-mins talk on summary of this study: [youtube.com/watch?v=KC3KNspc6O8&feature=youtu.be](https://youtu.be/KC3KNspc6O8?si=R0sC83HPCWj5yaUy)
 
 
