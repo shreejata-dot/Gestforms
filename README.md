@@ -35,3 +35,6 @@ Aligning with our hypothesis, we find so far is that 18-mo infants do discrilina
 
 They also look differently at pointing gestures versus iconic gestures that represent actions and object attributes. We are currently analysing the underlying mechanisms for these differences in detecting different gesture types. The manuscript is in preparation.
 
+youtube.com/watch?v=KC3KNspc6O8&feature=youtu.be
+
+
